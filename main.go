@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -103,18 +104,23 @@ func main() {
 	}()
 
 	http.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
-		key := r.URL.Path
+		key := r.URL.Path[1:]
 
-		log.Printf("%s %s%s", r.Method, *bucket, key)
+		// log.Printf("%s %s%s", r.Method, *bucket, key)
 
 		switch r.Method {
 		case "GET":
 			var b groupcache.ByteView
+
 			err := group.Get(nil, key, groupcache.ByteViewSink(&b))
-			if err != nil {
+			if err := errors.Cause(err); err != nil {
+				if awsErr, ok := err.(awserr.RequestFailure); ok && awsErr.StatusCode() == http.StatusNotFound {
+					http.NotFound(rw, r)
+					return
+				}
+
 				log.Println(errors.Wrap(err, "http get request failed"))
 				http.Error(rw, "failed to retrieve key", http.StatusInternalServerError)
-				return
 			}
 
 			if _, err := io.Copy(rw, b.Reader()); err != nil {
@@ -136,6 +142,7 @@ func main() {
 	})
 
 	peers := strings.Split(*peers, ",")
+	log.Println("peers", peers)
 	pool := groupcache.NewHTTPPool(peers[0])
 	pool.Set(peers...)
 
