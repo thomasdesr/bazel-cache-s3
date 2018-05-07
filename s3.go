@@ -55,6 +55,7 @@ func (s *S3Cache) Get(groupCacheContext groupcache.Context, key string, dest gro
 		Key:    aws.String(key),
 	})
 	if err != nil {
+		log.Println("Hydration failure:", err)
 		return errors.Wrap(err, "failed to download object")
 	}
 

@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -17,18 +18,38 @@ import (
 )
 
 var (
-	addr   = flag.String("addr", ":8080", "bind to this socket")
-	peers  = flag.String("peers", "http://localhost:8080", "List of URLs to resolve peers from")
+	bind = flag.String("bind", "127.0.0.1:8080", "bind to this socket")
+
+	self = flag.String("self", "http://localhost:8080", "This should be a valid base URL that points to the current server, for example \"http://example.net:8000\".")
+
+	manualPeers = flag.String("peers", "", "CSV separated list of peers' URLs")
+	srvDNSName  = flag.String("peer-srv-endpoint", "", "SRV record prefix for peer discovery (intended for use with kubernetes headless services)")
+
 	bucket = flag.String("bucket", "", "Bucket ot use for S3 client")
 )
-
-
 
 func parseArgs() {
 	flag.Parse()
 
 	if *bucket == "" {
 		log.Fatal("-bucket is required")
+	}
+
+	if _, err := url.Parse(*self); err != nil {
+		log.Fatalf("-self=%q does not contain a valid URL: %s", *self, err)
+	}
+
+	if *manualPeers != "" && *srvDNSName != "" {
+		log.Fatal("-peers & -peer-srv-endpoint are mututally exclusive options")
+	}
+
+	if peers := strings.Split(*manualPeers, ","); len(peers) > 0 {
+		for _, p := range peers {
+			_, err := url.Parse(p)
+			if err != nil {
+				log.Fatalf("%q is not a valid URL", p)
+			}
+		}
 	}
 }
 
@@ -46,7 +67,7 @@ func main() {
 	s3cache := NewS3Cache(s3c, *bucket)
 
 	group := groupcache.NewGroup(
-		"bazel-cache",
+		"bazelcache",
 		2<<32,
 		s3cache,
 	)
@@ -65,7 +86,7 @@ func main() {
 		// log.Printf("%s %s%s", r.Method, *bucket, key)
 
 		switch r.Method {
-		case "GET":
+		case "HEAD", "GET":
 			var b groupcache.ByteView
 			err := group.Get(nil, key, groupcache.ByteViewSink(&b))
 			if err := errors.Cause(err); err != nil {
@@ -92,10 +113,18 @@ func main() {
 		}
 	})
 
-	peers := strings.Split(*peers, ",")
-	log.Println("peers", peers)
-	pool := groupcache.NewHTTPPool(peers[0])
-	pool.Set(peers...)
+	pool := groupcache.NewHTTPPool(*self)
 
-	http.ListenAndServe(*addr, nil)
+	switch {
+	case *manualPeers != "":
+		peers := strings.Split(*manualPeers, ",")
+		StaticPeers(pool, append(peers, *self))
+	case *srvDNSName != "":
+		go func() {
+			err := SRVDiscoveredPeers(pool, *self, *srvDNSName)
+			log.Fatal("SRV peer resolution has died", err)
+		}()
+	}
+
+	http.ListenAndServe(*bind, nil)
 }
