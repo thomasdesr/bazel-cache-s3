@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -92,6 +93,14 @@ func main() {
 			)
 		}),
 	)
+
+	go func() {
+		for t := time.Tick(time.Second * 10); ; <-t {
+			log.Printf("Stats | %+v", group.Stats)
+			log.Printf("CacheStats:MainCache | %+v", group.CacheStats(groupcache.MainCache))
+			log.Printf("CacheStats:HotCache | %+v", group.CacheStats(groupcache.HotCache))
+		}
+	}()
 
 	http.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
 		key := r.URL.Path
