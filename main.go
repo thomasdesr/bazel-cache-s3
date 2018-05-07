@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"io"
 	"log"
@@ -22,8 +21,31 @@ var (
 	bucket = flag.String("bucket", "", "Bucket ot use for S3 client")
 )
 
-func s3Get(client *s3.S3, bucket string, key string) ([]byte, error) {
-	r, err := client.GetObject(&s3.GetObjectInput{
+func s3GetSize(s3c *s3.S3, bucket string, key string) (int64, error) {
+	r, err := s3c.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	if r.ContentLength != nil {
+		return *r.ContentLength, nil
+	}
+	return 0, nil
+}
+
+func s3Get(dl *s3manager.Downloader, bucket string, key string) ([]byte, error) {
+	log.Println("S3 get triggered")
+
+	size, err := s3GetSize(dl.S3.(*s3.S3), bucket, key)
+	if err != nil {
+		return nil, errors.Wrap(err, "Unable to head object")
+	}
+
+	buf := aws.NewWriteAtBuffer(make([]byte, size))
+	dl.Download(buf, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
@@ -31,15 +53,7 @@ func s3Get(client *s3.S3, bucket string, key string) ([]byte, error) {
 		return nil, errors.Wrap(err, "failed to download object")
 	}
 
-	var b bytes.Buffer
-	if r.ContentLength != nil {
-		b.Grow(int(*r.ContentLength))
-	}
-	if _, err := io.Copy(&b, r.Body); err != nil {
-		return nil, errors.Wrap(err, "failed to buffer request")
-	}
-
-	return b.Bytes(), nil
+	return buf.Bytes(), nil
 }
 
 func parseArgs() {
@@ -60,13 +74,14 @@ func main() {
 			Endpoint:         aws.String("http://localhost:9000"),
 		})),
 	)
+	downloader := s3manager.NewDownloaderWithClient(s3c)
 	uploader := s3manager.NewUploaderWithClient(s3c)
 
 	group := groupcache.NewGroup(
 		"bazel-cache",
 		2<<32,
 		groupcache.GetterFunc(func(ctx groupcache.Context, key string, dest groupcache.Sink) error {
-			b, err := s3Get(s3c, *bucket, key)
+			b, err := s3Get(downloader, *bucket, key)
 			if err != nil {
 				return errors.Wrap(err, "failed hydration during s3 get")
 			}
