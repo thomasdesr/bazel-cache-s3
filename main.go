@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -10,11 +9,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/golang/groupcache"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -73,6 +70,7 @@ func main() {
 		*bucket,
 	)
 
+	// Create group of cached objects
 	group := groupcache.NewGroup(
 		"bazelcache",
 		2<<32,
@@ -80,41 +78,8 @@ func main() {
 	)
 	go logCacheStats(group, time.Second*10)
 
-	http.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
-		key := r.URL.Path[1:]
-
-		// log.Printf("%s %s%s", r.Method, *bucket, key)
-
-		switch r.Method {
-		case "HEAD", "GET":
-			var b groupcache.ByteView
-			err := group.Get(nil, key, groupcache.ByteViewSink(&b))
-			if err := errors.Cause(err); err != nil {
-				if awsErr, ok := err.(awserr.RequestFailure); ok && awsErr.StatusCode() == http.StatusNotFound {
-					http.NotFound(rw, r)
-					return
-				}
-
-				log.Println(errors.Wrap(err, "http get request failed"))
-				http.Error(rw, "failed to retrieve key", http.StatusInternalServerError)
-			}
-
-			if _, err := io.Copy(rw, b.Reader()); err != nil {
-				log.Println(errors.Wrap(err, "error sending http get reply"))
-			}
-		case "PUT":
-			err := s3.PutReader(r.Context(), key, r.Body)
-
-			if err != nil {
-				log.Println(errors.Wrap(err, "http put request failed"))
-				http.Error(rw, "put failed", http.StatusInternalServerError)
-				return
-			}
-		}
-	})
-
-	pool := groupcache.NewHTTPPool(*self)
-
+	// Find our peers
+	pool := groupcache.NewHTTPPoolOpts(*self, nil)
 	switch {
 	case *manualPeers != "":
 		peers := strings.Split(*manualPeers, ",")
@@ -126,5 +91,7 @@ func main() {
 		}()
 	}
 
+	http.Handle("/", http.HandlerFunc(bazelClientHandler(group, s3)))
+	http.Handle("/_groupcache", pool)
 	http.ListenAndServe(*bind, nil)
 }
