@@ -21,6 +21,11 @@ func selfInPeers(self string, peers []string) bool {
 	return false
 }
 
+func setPeers(pool *groupcache.HTTPPool, peers []string) {
+	sort.Strings(peers)
+	pool.Set(peers...)
+}
+
 // StaticPeers validates and then sets the peers for a groupcaache.HTTPPool to be the provided peers
 func StaticPeers(pool *groupcache.HTTPPool, peers []string) error {
 	for i, peer := range peers {
@@ -30,8 +35,7 @@ func StaticPeers(pool *groupcache.HTTPPool, peers []string) error {
 		}
 	}
 
-	sort.Strings(peers)
-	pool.Set(peers...)
+	setPeers(pool, peers)
 
 	return nil
 }
@@ -59,8 +63,7 @@ func SRVDiscoveredPeers(pool *groupcache.HTTPPool, self string, srvPeerDNSName s
 			return errors.Errorf("self(%q) is not in peers (%q)", self, peers)
 		}
 
-		sort.Strings(peers)
-		pool.Set(peers...)
+		setPeers(pool, peers)
 
 		return nil
 	}
@@ -69,17 +72,9 @@ func SRVDiscoveredPeers(pool *groupcache.HTTPPool, self string, srvPeerDNSName s
 		return errors.Wrap(err, "initial SRV discovery failed")
 	}
 
-	var errCount int
 	for range time.Tick(time.Second * 15) {
-		err := update()
-		switch {
-		case err != nil && errCount > 10:
-			return err
-		case err != nil:
-			errCount++
-			log.Println(errors.Wrap(err, "failed to retrieve peers"))
-		default:
-			errCount = 0
+		if err := update(); err != nil {
+			log.Println(errors.Wrap(err, "update failed"))
 		}
 	}
 
