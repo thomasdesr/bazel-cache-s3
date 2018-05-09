@@ -12,6 +12,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+func selfInPeers(self string, peers []string) bool {
+	for _, peer := range peers {
+		if peer == self {
+			return true
+		}
+	}
+	return false
+}
+
 // StaticPeers validates and then sets the peers for a groupcaache.HTTPPool to be the provided peers
 func StaticPeers(pool *groupcache.HTTPPool, peers []string) error {
 	for i, peer := range peers {
@@ -46,8 +55,12 @@ func SRVDiscoveredPeers(pool *groupcache.HTTPPool, self string, srvPeerDNSName s
 			log.Printf("SRV peer: %q", peers[i])
 		}
 
+		if !selfInPeers(self, peers) {
+			return errors.Errorf("self(%q) is not in peers (%q)", self, peers)
+		}
+
 		sort.Strings(peers)
-		pool.Set(append(peers, self)...)
+		pool.Set(peers...)
 
 		return nil
 	}
