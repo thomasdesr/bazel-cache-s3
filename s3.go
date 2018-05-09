@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// S3Cache manages the relationship between groupcache and S3
+// S3 manages the relationship between groupcache and S3
 type S3 struct {
 	s3c *s3.S3
 	up  *s3manager.Uploader
@@ -65,7 +65,7 @@ func (s *S3) Getter(groupCacheContext groupcache.Context, key string, dest group
 	)
 }
 
-// Put a bunch of bytes into S3 with a given key
+// PutReader shoves a bunch of bytes into S3 with a given key
 func (s *S3) PutReader(ctx context.Context, key string, r io.Reader) error {
 	_, err := s.up.UploadWithContext(
 		ctx,
