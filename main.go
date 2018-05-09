@@ -64,12 +64,12 @@ func main() {
 		})),
 	)
 
-	s3cache := NewS3Cache(s3c, *bucket)
+	s3 := NewS3(s3c, *bucket)
 
 	group := groupcache.NewGroup(
 		"bazelcache",
 		2<<32,
-		s3cache,
+		groupcache.GetterFunc(s3.Getter),
 	)
 
 	go func() {
@@ -103,7 +103,7 @@ func main() {
 				log.Println(errors.Wrap(err, "error sending http get reply"))
 			}
 		case "PUT":
-			err := s3cache.Put(r.Context(), key, r.Body)
+			err := s3.PutReader(r.Context(), key, r.Body)
 
 			if err != nil {
 				log.Println(errors.Wrap(err, "http put request failed"))

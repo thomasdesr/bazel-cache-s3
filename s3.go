@@ -13,7 +13,7 @@ import (
 )
 
 // S3Cache manages the relationship between groupcache and S3
-type S3Cache struct {
+type S3 struct {
 	s3c *s3.S3
 	up  *s3manager.Uploader
 	dl  *s3manager.Downloader
@@ -21,8 +21,8 @@ type S3Cache struct {
 	bucket string
 }
 
-func NewS3Cache(s3c *s3.S3, bucket string) *S3Cache {
-	return &S3Cache{
+func NewS3(s3c *s3.S3, bucket string) *S3 {
+	return &S3{
 		s3c: s3c,
 		up:  s3manager.NewUploaderWithClient(s3c),
 		dl:  s3manager.NewDownloaderWithClient(s3c),
@@ -43,8 +43,8 @@ func bestEffortGetSize(s3c *s3.S3, bucket, key string) int64 {
 	return 0
 }
 
-// Get implements the groupcache.Getter interface
-func (s *S3Cache) Get(groupCacheContext groupcache.Context, key string, dest groupcache.Sink) error {
+// Getter implements the groupcache.Getter interface
+func (s *S3) Getter(groupCacheContext groupcache.Context, key string, dest groupcache.Sink) error {
 	log.Printf("Hydration request called, pulling %q from S3", key)
 
 	size := bestEffortGetSize(s.s3c, s.bucket, key)
@@ -65,7 +65,8 @@ func (s *S3Cache) Get(groupCacheContext groupcache.Context, key string, dest gro
 	)
 }
 
-func (s *S3Cache) Put(ctx context.Context, key string, r io.Reader) error {
+// Put a bunch of bytes into S3 with a given key
+func (s *S3) PutReader(ctx context.Context, key string, r io.Reader) error {
 	_, err := s.up.UploadWithContext(
 		ctx,
 		&s3manager.UploadInput{
