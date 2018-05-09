@@ -53,32 +53,32 @@ func parseArgs() {
 	}
 }
 
+func logCacheStats(group *groupcache.Group, interval time.Duration) {
+	for t := time.Tick(interval); ; <-t {
+		log.Printf("Stats | %+v", group.Stats)
+		log.Printf("CacheStats:MainCache | %+v", group.CacheStats(groupcache.MainCache))
+		log.Printf("CacheStats:HotCache | %+v", group.CacheStats(groupcache.HotCache))
+	}
+}
+
 func main() {
 	parseArgs()
 
-	s3c := s3.New(
-		session.Must(session.NewSession(&aws.Config{
+	s3 := NewS3(
+		s3.New(session.Must(session.NewSession(&aws.Config{
 			Region:           aws.String("us-west-2"),
 			S3ForcePathStyle: aws.Bool(true),
 			Endpoint:         aws.String("http://localhost:9000"),
-		})),
+		}))),
+		*bucket,
 	)
-
-	s3 := NewS3(s3c, *bucket)
 
 	group := groupcache.NewGroup(
 		"bazelcache",
 		2<<32,
 		groupcache.GetterFunc(s3.Getter),
 	)
-
-	go func() {
-		for t := time.Tick(time.Second * 10); ; <-t {
-			log.Printf("Stats | %+v", group.Stats)
-			log.Printf("CacheStats:MainCache | %+v", group.CacheStats(groupcache.MainCache))
-			log.Printf("CacheStats:HotCache | %+v", group.CacheStats(groupcache.HotCache))
-		}
-	}()
+	go logCacheStats(group, time.Second*10)
 
 	http.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
 		key := r.URL.Path[1:]
