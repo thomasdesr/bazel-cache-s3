@@ -70,5 +70,5 @@ func SRVDiscoveredPeers(pool *groupcache.HTTPPool, self string, srvPeerDNSName s
 		}
 	}
 
-	panic("Time.Tick stopped returning values?")
+	panic("Time.Tick stopped ticking?!?")
 }

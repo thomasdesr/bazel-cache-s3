@@ -122,7 +122,7 @@ func main() {
 	case *srvDNSName != "":
 		go func() {
 			err := SRVDiscoveredPeers(pool, *self, *srvDNSName)
-			log.Fatal("SRV peer resolution has died", err)
+			log.Fatal("SRV peer resolution has died: ", err)
 		}()
 	}
 
