@@ -55,7 +55,7 @@ func parseArgs() {
 
 		u = StaticPeers(*self, append(peers, *self))
 	case *srvDNSName != "":
-		u = SRVDiscoveredPeers(*self, *srvDNSName, time.Duration(0))
+		u = SRVDiscoveredPeers(*self, *srvDNSName, time.Second*15)
 	}
 }
 

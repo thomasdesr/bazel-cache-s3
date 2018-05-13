@@ -69,12 +69,8 @@ func srvLookup(srvName string) ([]string, error) {
 	return peers, nil
 }
 
-// SRVDiscoveredPeers periodically (defaults to 15s) sends SRV requests to the provided DNS name to discover (& set) the pool's peers
+// SRVDiscoveredPeers periodically sends SRV requests to the provided DNS name to discover (& set) the pool's peers
 func SRVDiscoveredPeers(self string, srvPeerDNSName string, updateInterval time.Duration) Updater {
-	if updateInterval == time.Duration(0) {
-		updateInterval = time.Second * 15
-	}
-
 	update := func(pool *groupcache.HTTPPool) error {
 		peers, err := srvLookup(srvPeerDNSName)
 		if err != nil {
