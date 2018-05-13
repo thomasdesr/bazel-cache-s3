@@ -151,7 +151,7 @@ func (c *cacheServer) handlePUT() http.HandlerFunc {
 		}
 
 		go func() {
-			err := uploadFile(r.Context(), f, key, c.s3m)
+			err := uploadFile(context.Background(), f, key, c.s3m)
 			if err != nil {
 				log.Println(errors.Wrap(err, "failed to upload buffered put file"))
 			}
