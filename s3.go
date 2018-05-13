@@ -48,7 +48,10 @@ func bestEffortGetSize(s3c *s3.S3, bucket, key string) int64 {
 func (s *S3Manager) Getter(groupCacheContext groupcache.Context, key string, dest groupcache.Sink) error {
 	log.Printf("Hydration request called, pulling %q from S3", key)
 
-	var ctx = groupCacheContext.(context.Context)
+	ctx, ok := groupCacheContext.(context.Context)
+	if !ok {
+		ctx = context.Background()
+	}
 
 	size := bestEffortGetSize(s.s3c, s.bucket, key)
 	buf := aws.NewWriteAtBuffer(make([]byte, size))
