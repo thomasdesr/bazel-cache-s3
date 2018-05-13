@@ -62,23 +62,15 @@ func newCacheServer(s3m *S3Manager, self string, getter groupcache.Getter, updat
 func (c *cacheServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	m := chi.NewRouter()
 
-	// tempDir, err := ioutil.TempDir("", "bazelcache")
-	// if err != nil {
-	// 	log.Println(errors.Wrap(err, "failed to make tempdir for body caching"))
-	// }
-	// defer os.RemoveAll(tempDir)
-
-	m.Use(
-		middleware.GetHead,
-		middleware.Logger,
-		middleware.Recoverer,
-	)
+	m.Use(middleware.GetHead)
+	m.Use(middleware.Logger)
+	m.Use(middleware.Recoverer)
 
 	m.Handle("/_groupcache/*", c.gpool)
 
 	m.Get("/ac/*", c.handleGET())
 	m.Get("/cas/*", c.handleGET())
-	// m.Put("/", diskBufferBodies(tempDir, c.handlePUT())
+
 	m.Put("/ac/*", c.handlePUT())
 	m.Put("/cas/*", c.handlePUT())
 
