@@ -4,7 +4,6 @@ import (
 	"log"
 	"net"
 	"net/url"
-	"sort"
 	"strconv"
 	"time"
 
@@ -24,11 +23,6 @@ func selfInPeers(self string, peers []string) bool {
 	return false
 }
 
-func setPeers(pool *groupcache.HTTPPool, peers []string) {
-	sort.Strings(peers)
-	pool.Set(peers...)
-}
-
 // StaticPeers validates and then sets the peers for a groupcaache.HTTPPool to be the provided peers
 func StaticPeers(self string, peers []string) Updater {
 	return func(pool *groupcache.HTTPPool) error {
@@ -43,7 +37,7 @@ func StaticPeers(self string, peers []string) Updater {
 			return errors.Errorf("self is not in peers", self, peers)
 		}
 
-		setPeers(pool, peers)
+		pool.Set(peers...)
 
 		return nil
 	}
@@ -81,7 +75,7 @@ func SRVDiscoveredPeers(self string, srvPeerDNSName string, updateInterval time.
 			return errors.Errorf("self(%q) is not in peers (%q)", self, peers)
 		}
 
-		setPeers(pool, peers)
+		pool.Set(peers...)
 
 		return nil
 	}
