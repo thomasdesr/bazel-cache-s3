@@ -27,8 +27,8 @@ type cacheServer struct {
 	gpool *groupcache.HTTPPool
 }
 
-// newCacheServer takes an S3Manager to handle interactions with S3 and a self string that provides the hostname of this host
-func newCacheServer(s3m *S3Manager, self string, updater updater) *cacheServer {
+// newCacheServer provides an HTTP server that implements a bazel cache endpoint. It uses an S3Manager to store cachable actions and objects into S3nd a groupcache pool to cache objects
+func newCacheServer(s3m *S3Manager, self string, updater Updater) *cacheServer {
 	// Create group of cached objects
 	group := groupcache.NewGroup(
 		"bazelcache",
@@ -39,7 +39,11 @@ func newCacheServer(s3m *S3Manager, self string, updater updater) *cacheServer {
 
 	// Find our peers
 	pool := groupcache.NewHTTPPoolOpts(self, nil)
-	go updater(pool)
+	go func() {
+		if err := updater(pool); err != nil {
+			log.Fatal(errors.Wrap(err, "updater failed"))
+		}
+	}()
 
 	cs := &cacheServer{
 		s3m: s3m,

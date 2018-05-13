@@ -20,7 +20,7 @@ var (
 
 	manualPeers = flag.String("peers", "", "CSV separated list of peers' URLs")
 	srvDNSName  = flag.String("peer-srv-endpoint", "", "SRV record prefix for peer discovery (intended for use with kubernetes headless services)")
-	u           updater
+	u           Updater
 
 	bucket = flag.String("bucket", "", "Bucket ot use for S3 client")
 )
@@ -51,7 +51,9 @@ func parseArgs() {
 
 	switch {
 	case *manualPeers != "":
-		u = StaticPeers(append(strings.Split(*manualPeers, ","), *self))
+		peers := strings.Split(*manualPeers, ",")
+
+		u = StaticPeers(*self, append(peers, *self))
 	case *srvDNSName != "":
 		u = SRVDiscoveredPeers(*self, *srvDNSName, time.Duration(0))
 	}

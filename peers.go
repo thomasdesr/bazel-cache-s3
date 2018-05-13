@@ -12,7 +12,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-type updater func(p *groupcache.HTTPPool) error
+// Updater is responsible for setting the peers for a given pool, it may block and do this indefinitely or simply run once.
+type Updater func(p *groupcache.HTTPPool) error
 
 func selfInPeers(self string, peers []string) bool {
 	for _, peer := range peers {
@@ -29,13 +30,17 @@ func setPeers(pool *groupcache.HTTPPool, peers []string) {
 }
 
 // StaticPeers validates and then sets the peers for a groupcaache.HTTPPool to be the provided peers
-func StaticPeers(peers []string) func(pool *groupcache.HTTPPool) error {
+func StaticPeers(self string, peers []string) Updater {
 	return func(pool *groupcache.HTTPPool) error {
 		for i, peer := range peers {
 			_, err := url.Parse(peer)
 			if err != nil {
 				return errors.Wrapf(err, "failed to parse peer URL %q:%q", i, peer)
 			}
+		}
+
+		if !selfInPeers(self, peers) {
+			return errors.Errorf("self is not in peers", self, peers)
 		}
 
 		setPeers(pool, peers)
@@ -49,7 +54,7 @@ func srvLookup(srvName string) ([]string, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to resolve SRV record")
 	}
-	log.Printf("SRV CNAME: %q", cname)
+	log.Printf("SRV Name: %q", cname)
 
 	// Build peer list from SRV targets
 	peers := make([]string, len(targets))
@@ -65,7 +70,7 @@ func srvLookup(srvName string) ([]string, error) {
 }
 
 // SRVDiscoveredPeers periodically (defaults to 15s) sends SRV requests to the provided DNS name to discover (& set) the pool's peers
-func SRVDiscoveredPeers(self string, srvPeerDNSName string, updateInterval time.Duration) func(pool *groupcache.HTTPPool) error {
+func SRVDiscoveredPeers(self string, srvPeerDNSName string, updateInterval time.Duration) Updater {
 	if updateInterval == time.Duration(0) {
 		updateInterval = time.Second * 15
 	}
