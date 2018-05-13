@@ -37,7 +37,6 @@ func diskBufferBodies(tempDir string, next http.HandlerFunc) http.HandlerFunc {
 			http.Error(rw, e, http.StatusInternalServerError)
 		}
 
-		r.Body.Close()
 		r.Body = f
 
 		next(rw, r)

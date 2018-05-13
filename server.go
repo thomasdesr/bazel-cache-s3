@@ -91,8 +91,8 @@ func (c *cacheServer) handleGET() http.HandlerFunc {
 
 		var b groupcache.ByteView
 		err := c.group.Get(r.Context(), key, groupcache.ByteViewSink(&b))
-		if err := errors.Cause(err); err != nil {
-			if awsErr, ok := err.(awserr.RequestFailure); ok && awsErr.StatusCode() == http.StatusNotFound {
+		if cause := errors.Cause(err); err != nil {
+			if awsErr, ok := cause.(awserr.RequestFailure); ok && awsErr.StatusCode() == http.StatusNotFound {
 				http.NotFound(rw, r)
 				return
 			}
@@ -105,7 +105,7 @@ func (c *cacheServer) handleGET() http.HandlerFunc {
 	}
 }
 
-func bufferToDisk(tempdir string, source io.ReadCloser) (*os.File, error) {
+func bufferToDisk(tempdir string, source io.Reader) (*os.File, error) {
 	f, err := ioutil.TempFile(tempdir, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create tempfile for upload buffering")
@@ -123,7 +123,9 @@ func bufferToDisk(tempdir string, source io.ReadCloser) (*os.File, error) {
 }
 
 func uploadFile(ctx context.Context, f *os.File, key string, s3m *S3Manager) error {
-	s3m.PutReader(ctx, key, f)
+	if err := s3m.PutReader(ctx, key, f); err != nil {
+		return errors.Wrap(err, "upload manager put failed")
+	}
 
 	if err := f.Close(); err != nil {
 		return errors.Wrap(err, "failed to close body buffer tempfile")
@@ -154,7 +156,5 @@ func (c *cacheServer) handlePUT() http.HandlerFunc {
 				log.Println(errors.Wrap(err, "failed to upload buffered put file"))
 			}
 		}()
-
-		return
 	}
 }

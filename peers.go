@@ -34,7 +34,7 @@ func StaticPeers(self string, peers []string) Updater {
 		}
 
 		if !selfInPeers(self, peers) {
-			return errors.Errorf("self is not in peers", self, peers)
+			return errors.Errorf("self not in peers: %q not in %q", self, peers)
 		}
 
 		pool.Set(peers...)
@@ -72,7 +72,7 @@ func SRVDiscoveredPeers(self string, srvPeerDNSName string, updateInterval time.
 		}
 
 		if !selfInPeers(self, peers) {
-			return errors.Errorf("self(%q) is not in peers (%q)", self, peers)
+			return errors.Errorf("self not in peers: %q not in %q", self, peers)
 		}
 
 		pool.Set(peers...)
