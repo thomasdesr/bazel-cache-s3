@@ -74,7 +74,7 @@ func (c *cacheServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		middleware.Recoverer,
 	)
 
-	m.Handle("/_groupcache", c.gpool)
+	m.Handle("/_groupcache/*", c.gpool)
 
 	m.Get("/ac/*", c.handleGET())
 	m.Get("/cas/*", c.handleGET())
