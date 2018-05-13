@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/golang/groupcache"
 	graceful "gopkg.in/tylerb/graceful.v1"
 )
 
@@ -71,7 +72,7 @@ func main() {
 		*bucket,
 	)
 
-	cs := newCacheServer(s3m, *self, u)
+	cs := newCacheServer(s3m, *self, groupcache.GetterFunc(s3m.Getter), u)
 
 	graceful.Run(*bind, time.Second*15, cs)
 }

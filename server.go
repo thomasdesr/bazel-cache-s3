@@ -32,12 +32,12 @@ type cacheServer struct {
 }
 
 // newCacheServer provides an HTTP server that implements a bazel cache endpoint. It uses an S3Manager to store cachable actions and objects into S3nd a groupcache pool to cache objects
-func newCacheServer(s3m *S3Manager, self string, updater Updater) *cacheServer {
+func newCacheServer(s3m *S3Manager, self string, getter groupcache.Getter, updater Updater) *cacheServer {
 	// Create group of cached objects
 	group := groupcache.NewGroup(
 		"bazelcache",
 		2<<32,
-		groupcache.GetterFunc(s3m.Getter),
+		getter,
 	)
 	go logCacheStats(group, time.Second*15)
 
