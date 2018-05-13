@@ -64,15 +64,19 @@ func (c *cacheServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// }
 	// defer os.RemoveAll(tempDir)
 
-	m.Use(middleware.GetHead)
-	m.Use(middleware.Logger)
-	m.Use(middleware.Recoverer)
+	m.Use(
+		middleware.GetHead,
+		middleware.Logger,
+		middleware.Recoverer,
+	)
 
 	m.Handle("/_groupcache", c.gpool)
 
-	m.Get("/", c.handleGET())
+	m.Get("/ac/*", c.handleGET())
+	m.Get("/cas/*", c.handleGET())
 	// m.Put("/", diskBufferBodies(tempDir, c.handlePUT())
-	m.Put("/", c.handlePUT())
+	m.Put("/ac/*", c.handlePUT())
+	m.Put("/cas/*", c.handlePUT())
 
 	m.ServeHTTP(rw, r)
 }
