@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/golang/groupcache"
 )
 
 var (
@@ -21,6 +20,7 @@ var (
 
 	manualPeers = flag.String("peers", "", "CSV separated list of peers' URLs")
 	srvDNSName  = flag.String("peer-srv-endpoint", "", "SRV record prefix for peer discovery (intended for use with kubernetes headless services)")
+	u           updater
 
 	bucket = flag.String("bucket", "", "Bucket ot use for S3 client")
 )
@@ -48,20 +48,19 @@ func parseArgs() {
 			}
 		}
 	}
-}
 
-func logCacheStats(group *groupcache.Group, interval time.Duration) {
-	for t := time.Tick(interval); ; <-t {
-		log.Printf("Stats | %+v", group.Stats)
-		log.Printf("CacheStats:MainCache | %+v", group.CacheStats(groupcache.MainCache))
-		log.Printf("CacheStats:HotCache | %+v", group.CacheStats(groupcache.HotCache))
+	switch {
+	case *manualPeers != "":
+		u = StaticPeers(append(strings.Split(*manualPeers, ","), *self))
+	case *srvDNSName != "":
+		u = SRVDiscoveredPeers(*self, *srvDNSName, time.Duration(0))
 	}
 }
 
 func main() {
 	parseArgs()
 
-	s3 := NewS3(
+	s3m := NewS3Manager(
 		s3.New(session.Must(session.NewSession(&aws.Config{
 			Region:           aws.String("us-west-2"),
 			S3ForcePathStyle: aws.Bool(true),
@@ -70,28 +69,7 @@ func main() {
 		*bucket,
 	)
 
-	// Create group of cached objects
-	group := groupcache.NewGroup(
-		"bazelcache",
-		2<<32,
-		groupcache.GetterFunc(s3.Getter),
-	)
-	go logCacheStats(group, time.Second*10)
+	cs := newCacheServer(s3m, *self, u)
 
-	// Find our peers
-	pool := groupcache.NewHTTPPoolOpts(*self, nil)
-	switch {
-	case *manualPeers != "":
-		peers := strings.Split(*manualPeers, ",")
-		StaticPeers(pool, append(peers, *self))
-	case *srvDNSName != "":
-		go func() {
-			err := SRVDiscoveredPeers(pool, *self, *srvDNSName)
-			log.Fatal("SRV peer resolution has died: ", err)
-		}()
-	}
-
-	http.Handle("/", http.HandlerFunc(bazelClientHandler(group, s3)))
-	http.Handle("/_groupcache", pool)
-	http.ListenAndServe(*bind, nil)
+	http.ListenAndServe(*bind, cs)
 }
