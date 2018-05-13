@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// S3Manager manages the relationship between groupcache and S3Manager
+// S3Manager is a wrapper around S3 Upload & Download Managers (fancy wrappers around multipart API endpoints) that expose a groupcache & http put friendly API
 type S3Manager struct {
 	s3c *s3.S3
 	up  *s3manager.Uploader
@@ -21,6 +21,7 @@ type S3Manager struct {
 	bucket string
 }
 
+// NewS3Manager defines which bucket will be used for data storage & initalizes the S3 managers
 func NewS3Manager(s3c *s3.S3, bucket string) *S3Manager {
 	return &S3Manager{
 		s3c: s3c,
@@ -67,7 +68,7 @@ func (s *S3Manager) Getter(groupCacheContext groupcache.Context, key string, des
 	)
 }
 
-// PutReader shoves a bunch of bytes into S3Manager with a given key
+// PutReader passes the provided reader to an S3 Upload manager and tells it to upload the contents of that reader to the also given key
 func (s *S3Manager) PutReader(ctx context.Context, key string, r io.Reader) error {
 	_, err := s.up.UploadWithContext(
 		ctx,

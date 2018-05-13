@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -101,10 +105,56 @@ func (c *cacheServer) handleGET() http.HandlerFunc {
 	}
 }
 
+func bufferToDisk(tempdir string, source io.ReadCloser) (*os.File, error) {
+	f, err := ioutil.TempFile(tempdir, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create tempfile for upload buffering")
+	}
+
+	if _, err := io.Copy(f, source); err != nil {
+		return nil, errors.Wrap(err, "failed to buffer PUT body correctly")
+	}
+
+	if _, err := f.Seek(0, 0); err != nil {
+		return nil, errors.Wrap(err, "failed to return file offset to the start of the file")
+	}
+
+	return f, nil
+}
+
+func uploadFile(ctx context.Context, f *os.File, key string, s3m *S3Manager) error {
+	s3m.PutReader(ctx, key, f)
+
+	if err := f.Close(); err != nil {
+		return errors.Wrap(err, "failed to close body buffer tempfile")
+	}
+
+	if err := os.Remove(f.Name()); err != nil {
+		return errors.Wrap(err, "failed to cleanup body buffer tempfile")
+	}
+
+	return nil
+}
+
 func (c *cacheServer) handlePUT() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		key := r.URL.Path[1:]
 
-		c.s3m.PutReader(r.Context(), key, r.Body)
+		f, err := bufferToDisk("", r.Body)
+		if err != nil {
+			e := "failed to buffer to disk"
+			log.Println(errors.Wrap(err, e))
+			http.Error(rw, e, http.StatusInternalServerError)
+			return
+		}
+
+		go func() {
+			err := uploadFile(r.Context(), f, key, c.s3m)
+			if err != nil {
+				log.Println(errors.Wrap(err, "failed to upload buffered put file"))
+			}
+		}()
+
+		return
 	}
 }

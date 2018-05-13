@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	graceful "gopkg.in/tylerb/graceful.v1"
 )
 
 var (
@@ -73,5 +73,5 @@ func main() {
 
 	cs := newCacheServer(s3m, *self, u)
 
-	http.ListenAndServe(*bind, cs)
+	graceful.Run(*bind, time.Second*15, cs)
 }
