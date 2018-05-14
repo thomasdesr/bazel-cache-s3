@@ -25,7 +25,7 @@ func logCacheStats(group *groupcache.Group, interval time.Duration) {
 }
 
 type cacheServer struct {
-	s3m *S3Manager
+	s3m *S3Manager // TOOD(@thomas): this shouldn't be too hard to abstract, do so
 
 	group *groupcache.Group
 	gpool *groupcache.HTTPPool
