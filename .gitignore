@@ -1,5 +1,7 @@
 *.swp
 
+bazel-*
+
 # Mac OS X
 .DS_Store
 
