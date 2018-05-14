@@ -57,6 +57,8 @@ func parseArgs() {
 		u = StaticPeers(*self, append(peers, *self))
 	case *srvDNSName != "":
 		u = SRVDiscoveredPeers(*self, *srvDNSName, time.Second*15)
+	default:
+		log.Fatal("must set a peer option: -peers || -peer-srv-endpoint")
 	}
 }
 
@@ -65,9 +67,9 @@ func main() {
 
 	s3m := NewS3Manager(
 		s3.New(session.Must(session.NewSession(&aws.Config{
-			Region:           aws.String("us-west-2"),
-			S3ForcePathStyle: aws.Bool(true),
-			Endpoint:         aws.String("http://localhost:9000"),
+			Region: aws.String("us-west-2"),
+			// S3ForcePathStyle: aws.Bool(true),
+			// Endpoint:         aws.String("http://localhost:9000"),
 		}))),
 		*bucket,
 	)
