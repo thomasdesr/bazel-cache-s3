@@ -14,7 +14,7 @@ go_library(
         "s3.go",
         "server.go",
     ],
-    importpath = "github.com/bazel-cache-s3",
+    importpath = "github.com/thomaso-mirodin/bazel-cache-s3",
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_aws_aws_sdk_go//aws:go_default_library",
