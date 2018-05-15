@@ -13,7 +13,27 @@ http_archive(
 load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
 
 go_rules_dependencies()
+
 go_register_toolchains()
 
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+
 gazelle_dependencies()
+
+go_repository(
+    name = "com_github_pkg_errors",
+    commit = "816c9085562cd7ee03e7f8188a1cfd942858cded",
+    importpath = "github.com/pkg/errors",
+)
+
+go_repository(
+    name = "com_github_aws_aws_sdk_go",
+    commit = "85a81a15072b38078dd2114b87d34d02fa633c1c",
+    importpath = "github.com/aws/aws-sdk-go",
+)
+
+go_repository(
+    name = "com_github_golang_groupcache",
+    commit = "24b0969c4cb722950103eed87108c8d291a8df00",
+    importpath = "github.com/golang/groupcache",
+)
