@@ -31,7 +31,17 @@ go_library(
 )
 
 go_binary(
-    name = "bazel-cache-s3",
+    name = "bazel-cache-s3-linux",
     embed = [":go_default_library"],
     visibility = ["//visibility:public"],
+    goos = "linux",
+    goarch = "amd64",
+)
+
+go_binary(
+    name = "bazel-cache-s3-darwin",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+    goos = "darwin",
+    goarch = "amd64",
 )
