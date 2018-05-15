@@ -10,3 +10,12 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# Vim
+*.swp
+
+# Mac OS X
+.DS_Store
+
+# Bazel
+bazel-*
