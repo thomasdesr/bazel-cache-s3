@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 gazelle(
     name = "gazelle",
-    prefix = "github.com/bazel-cache-s3",
+    prefix = "github.com/thomaso-mirodin/bazel-cache-s3",
 )
 
 go_library(
