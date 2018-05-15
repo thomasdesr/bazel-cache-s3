@@ -37,3 +37,15 @@ go_repository(
     commit = "24b0969c4cb722950103eed87108c8d291a8df00",
     importpath = "github.com/golang/groupcache",
 )
+
+go_repository(
+    name = "com_github_go_chi_chi",
+    commit = "cca4135d8dddff765463feaf1118047a9e506b4a",
+    importpath = "github.com/go-chi/chi",
+)
+
+go_repository(
+    name = "in_gopkg_tylerb_graceful_v1",
+    commit = "4654dfbb6ad53cb5e27f37d99b02e16c1872fbbb",
+    importpath = "gopkg.in/tylerb/graceful.v1",
+)
