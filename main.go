@@ -19,9 +19,11 @@ var (
 
 	self = flag.String("self", "http://localhost:8080", "This should be a valid base URL that points to the current server, for example \"http://example.net:8000\".")
 
-	manualPeers = flag.String("peers", "", "CSV separated list of peers' URLs")
-	srvDNSName  = flag.String("peer-srv-endpoint", "", "SRV record prefix for peer discovery (intended for use with kubernetes headless services)")
-	u           Updater
+	manualPeers  = flag.String("peers", "", "CSV separated list of peers' URLs")
+	dnsPeers     = flag.String("peer-endpoints", "localhost", "DNS name to use for peer discovery (intended for use with kubernetes headless services)")
+	dnsPeersPort = flag.String("peer-endpoints-port", "8080", "Port to use for peer-endpoints")
+	srvDNSName   = flag.String("peer-srv-endpoint", "", "SRV record prefix for peer discovery (intended for use with kubernetes headless services)")
+	u            Updater
 
 	bucket = flag.String("bucket", "", "Bucket ot use for S3 client")
 )
@@ -57,6 +59,9 @@ func parseArgs() {
 		u = StaticPeers(*self, append(peers, *self))
 	case *srvDNSName != "":
 		u = SRVDiscoveredPeers(*self, *srvDNSName, time.Second*15)
+	case *dnsPeers != "":
+		peers := strings.Split(*dnsPeers, ",")
+		u = DiscoveredPeers(*self, peers, *dnsPeersPort, time.Second*15)
 	default:
 		log.Fatal("must set a peer option: -peers || -peer-srv-endpoint")
 	}
