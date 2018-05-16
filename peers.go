@@ -43,8 +43,8 @@ func StaticPeers(self string, peers []string) Updater {
 	}
 }
 
-func srvLookup(srvName string) ([]string, error) {
-	cname, targets, err := net.LookupSRV("bazelcache", "tcp", srvName)
+func srvLookup(srvName string, srvPortName string) ([]string, error) {
+	cname, targets, err := net.LookupSRV(srvPortName, "tcp", srvName)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to resolve SRV record")
 	}
@@ -53,9 +53,18 @@ func srvLookup(srvName string) ([]string, error) {
 	// Build peer list from SRV targets
 	peers := make([]string, len(targets))
 	for i, addr := range targets {
+		ip, err := net.LookupHost(addr.Target)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to resolve SRV record")
+		}
+
+		if len(ip) != 1 {
+			return nil, errors.Errorf("Got multiple hosts for ip: %q in %q", addr.Target, ip)
+		}
+
 		peers[i] = (&url.URL{
 			Scheme: "http",
-			Host:   net.JoinHostPort(addr.Target, strconv.Itoa(int(addr.Port))),
+			Host:   net.JoinHostPort(ip[0], strconv.Itoa(int(addr.Port))),
 		}).String()
 		log.Printf("SRV peer: %q", peers[i])
 	}
@@ -64,15 +73,17 @@ func srvLookup(srvName string) ([]string, error) {
 }
 
 // SRVDiscoveredPeers periodically sends SRV requests to the provided DNS name to discover (& set) the pool's peers
-func SRVDiscoveredPeers(self string, srvPeerDNSName string, updateInterval time.Duration) Updater {
+func SRVDiscoveredPeers(self string, srvPeerDNSName string, srvPortName string, updateInterval time.Duration) Updater {
 	update := func(pool *groupcache.HTTPPool) error {
-		peers, err := srvLookup(srvPeerDNSName)
+		peers, err := srvLookup(srvPeerDNSName, srvPortName)
 		if err != nil {
-			return errors.Wrap(err, "srv lookup failed")
+			pool.Set(self)
+			return nil
+			// return errors.Wrap(err, "srv lookup failed")
 		}
 
 		if !selfInPeers(self, peers) {
-			return errors.Errorf("self not in peers: %q not in %q", self, peers)
+			// return errors.Errorf("self not in peers: %q not in %q", self, peers)
 		}
 
 		pool.Set(peers...)

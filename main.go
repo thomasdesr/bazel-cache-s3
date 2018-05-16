@@ -21,9 +21,10 @@ var (
 
 	manualPeers = flag.String("peers", "", "CSV separated list of peers' URLs")
 	srvDNSName  = flag.String("peer-srv-endpoint", "", "SRV record prefix for peer discovery (intended for use with kubernetes headless services)")
+	srvPortName  = flag.String("peer-srv-port-name", "", "SRV record prefix for peer discovery (intended for use with kubernetes headless services)")
 	u           Updater
 
-	bucket = flag.String("bucket", "", "Bucket ot use for S3 client")
+	bucket = flag.String("bucket", "", "Bucket to use for S3 client")
 )
 
 func parseArgs() {
@@ -41,6 +42,16 @@ func parseArgs() {
 		log.Fatal("-peers & -peer-srv-endpoint are mututally exclusive options")
 	}
 
+	if *srvDNSName == "" {
+		if *srvPortName != "" {
+			log.Fatal("-peer-srv-endpoint & -peer-srv-port-name must be set together")
+		}
+	} else {
+		if *srvPortName == "" {
+			log.Fatal("-peer-srv-endpoint & -peer-srv-port-name must be set together")
+		}
+	}
+
 	if peers := strings.Split(*manualPeers, ","); len(peers) > 0 {
 		for _, p := range peers {
 			_, err := url.Parse(p)
@@ -56,7 +67,7 @@ func parseArgs() {
 
 		u = StaticPeers(*self, append(peers, *self))
 	case *srvDNSName != "":
-		u = SRVDiscoveredPeers(*self, *srvDNSName, time.Second*15)
+		u = SRVDiscoveredPeers(*self, *srvDNSName, *srvPortName, time.Second*15)
 	default:
 		log.Fatal("must set a peer option: -peers || -peer-srv-endpoint")
 	}
