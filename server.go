@@ -68,11 +68,11 @@ func (c *cacheServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	m.Handle("/_groupcache/*", c.gpool)
 
-	m.Get("/ac/*", c.handleGET())
-	m.Get("/cas/*", c.handleGET())
+	m.Get("/cache/ac/*", c.handleGET())
+	m.Get("/cache/cas/*", c.handleGET())
 
-	m.Put("/ac/*", c.handlePUT())
-	m.Put("/cas/*", c.handlePUT())
+	m.Put("/cache/ac/*", c.handlePUT())
+	m.Put("/cache/cas/*", c.handlePUT())
 
 	m.ServeHTTP(rw, r)
 }
