@@ -94,3 +94,44 @@ func SRVDiscoveredPeers(self string, srvPeerDNSName string, updateInterval time.
 		panic("Time.Tick stopped ticking?!?")
 	}
 }
+
+// DiscoveredPeers periodically sends a A record request to the provided DNS name(s) to discover (& set) the pool's peers to all returned IP addresses
+func DiscoveredPeers(self string, dnsNames []string, port string, updateInterval time.Duration) Updater {
+	update := func(pool *groupcache.HTTPPool) error {
+		peers := make([]string, len(dnsNames))
+
+		for _, name := range dnsNames {
+			addrs, err := net.LookupHost(name)
+			if err != nil {
+				return errors.Wrapf(err, "failed to resolve %q", name)
+			}
+
+			for _, addr := range addrs {
+				p := &url.URL{Host: net.JoinHostPort(addr, port), Scheme: "http"}
+				peers = append(peers, p.String())
+			}
+		}
+
+		if !selfInPeers(self, peers) {
+			log.Printf("warning: self not in peers: %q not in %q", self, peers)
+		}
+
+		pool.Set(peers...)
+
+		return nil
+	}
+
+	return func(pool *groupcache.HTTPPool) error {
+		if err := update(pool); err != nil {
+			return errors.Wrap(err, "initial lookup failed")
+		}
+
+		for range time.Tick(updateInterval) {
+			if err := update(pool); err != nil {
+				log.Println(errors.Wrap(err, "update failed"))
+			}
+		}
+
+		panic("Time.Tick stopped ticking?")
+	}
+}
