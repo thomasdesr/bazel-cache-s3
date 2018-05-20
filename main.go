@@ -24,6 +24,8 @@ var (
 	u           Updater
 
 	bucket = flag.String("bucket", "", "Bucket ot use for S3 client")
+
+	cacheSize = flag.Int64("cache-size", 4*1<<30, "How many bytes of memory to use for object caching (default to 4 GB)")
 )
 
 func parseArgs() {
@@ -74,7 +76,7 @@ func main() {
 		*bucket,
 	)
 
-	cs := newCacheServer(s3m, *self, groupcache.GetterFunc(s3m.Getter), u)
+	cs := newCacheServer(s3m, *cacheSize, *self, groupcache.GetterFunc(s3m.Getter), u)
 
 	graceful.Run(*bind, time.Second*15, cs)
 }
