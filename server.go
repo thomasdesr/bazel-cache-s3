@@ -36,7 +36,7 @@ func newCacheServer(s3m *S3Manager, self string, getter groupcache.Getter, updat
 	// Create group of cached objects
 	group := groupcache.NewGroup(
 		"bazelcache",
-		2<<32,
+		2<<34,
 		getter,
 	)
 	go logCacheStats(group, time.Second*15)
