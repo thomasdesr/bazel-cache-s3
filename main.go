@@ -1,4 +1,5 @@
 package main
+//import _ "net/http/pprof"
 
 import (
 	"flag"
@@ -6,6 +7,9 @@ import (
 	"net/url"
 	"strings"
 	"time"
+        "runtime/debug"
+        //"net/http"
+        "runtime"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -74,8 +78,20 @@ func parseArgs() {
 }
 
 func main() {
+        debug.SetGCPercent(5)
+        ticker := time.NewTicker(time.Millisecond * 300000)
+        go func() {
+           for t := range ticker.C {
+               log.Println("Forcing GC", t)
+               runtime.GC()
+           }
+        }()
 	parseArgs()
-
+        /*
+        go func() {
+	   log.Println(http.ListenAndServe("localhost:6060", nil))
+        }()
+        */
 	s3m := NewS3Manager(
 		s3.New(session.Must(session.NewSession(&aws.Config{
 			Region: aws.String("us-west-2"),
@@ -86,6 +102,6 @@ func main() {
 	)
 
 	cs := newCacheServer(s3m, *self, groupcache.GetterFunc(s3m.Getter), u)
-
+       
 	graceful.Run(*bind, time.Second*15, cs)
 }
